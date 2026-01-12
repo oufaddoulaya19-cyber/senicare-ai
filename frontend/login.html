@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Senior AI — Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-black flex items-center justify-center text-white">
+
+<div class="w-full max-w-md bg-white/5 backdrop-blur-lg p-8 rounded-2xl border border-white/10 shadow-xl">
+  <h1 class="text-2xl font-bold text-center mb-2">Senior AI Assistant</h1>
+  <p class="text-center text-slate-300 mb-6">Connexion sécurisée</p>
+
+  <input id="email" type="email" placeholder="Email"
+    class="w-full p-3 rounded-xl bg-white/10 border border-white/20 mb-3 outline-none">
+
+  <input id="password" type="password" placeholder="Mot de passe"
+    class="w-full p-3 rounded-xl bg-white/10 border border-white/20 mb-4 outline-none">
+
+  <button id="loginBtn"
+    class="w-full p-3 rounded-xl bg-blue-600 hover:bg-blue-700 transition font-bold">
+    Se connecter
+  </button>
+
+  <p id="status" class="text-center text-red-400 mt-3 text-sm"></p>
+
+  <p class="text-center text-sm mt-6 text-slate-300">
+    Pas de compte ?
+    <a href="register.html" class="text-blue-400 hover:underline">Créer un compte</a>
+  </p>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000/auth/login";
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const status = document.getElementById("status");
+
+  status.textContent = "Connexion...";
+
+  try {
+    const response = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await response.json();
+    console.log("LOGIN RESPONSE:", data);   // <-- SUPER IMPORTANT
+
+    if (!data.success) {
+      status.textContent = data.error || "Login failed";
+      return;
+    }
+
+    // Save session
+    localStorage.setItem("user_id", data.user_id);
+    localStorage.setItem("prenom", data.prenom);
+    localStorage.setItem("email", data.email);
+
+    status.textContent = "Connexion OK";
+    status.className = "text-green-400 text-center";
+
+    // Redirect
+    setTimeout(() => {
+      window.location.href = "chat.html";
+    }, 500);
+
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Erreur réseau";
+  }
+});
+</script>
+
+
+</body>
+</html>

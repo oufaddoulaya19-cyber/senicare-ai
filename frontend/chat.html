@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>SeniCare AI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body {
+  background: radial-gradient(circle at 20% 10%, rgba(59,130,246,.15), transparent 40%),
+              radial-gradient(circle at 80% 20%, rgba(168,85,247,.15), transparent 45%),
+              linear-gradient(to bottom, #020617, #020617);
+  color:white;
+}
+.glass {
+  background: rgba(15,23,42,.7);
+  backdrop-filter: blur(12px);
+}
+.med-card{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:16px;
+  padding:14px;
+  margin-top:10px;
+}
+.med-title{
+  font-weight:600;
+  color:#60a5fa;
+}
+.patient-card{
+  background:linear-gradient(135deg,#1e293b,#020617);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:14px;
+  margin-bottom:12px;
+}
+</style>
+</head>
+
+<body class="h-screen flex flex-col">
+
+<header class="glass p-4 flex justify-between items-center border-b border-white/10">
+  <div class="flex items-center gap-3">
+    <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-fuchsia-500 flex items-center justify-center font-bold">AI</div>
+    <div>
+      <div class="font-semibold text-lg">SeniCare AI</div>
+      <div class="text-xs text-slate-400">Assistant médical intelligent</div>
+    </div>
+  </div>
+  <button class="px-3 py-1 bg-red-500/20 text-red-300 rounded hover:bg-red-500/30">Déconnexion</button>
+</header>
+
+<button id="exportBtn" class="hidden m-4 px-6 py-2 bg-green-500/30 rounded-xl">
+📄 Télécharger ordonnance PDF
+</button>
+
+<div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+
+<div class="glass p-4 flex gap-2 border-t border-white/10">
+  <button id="addRxBtn"
+    class="h-11 w-11 rounded-xl bg-white/10 hover:bg-white/20 text-xl flex items-center justify-center">
+    +
+  </button>
+
+  <input id="textInput"
+    class="flex-1 h-11 bg-white/10 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500/50"
+    placeholder="Écris ton message…" />
+
+  <button id="sendBtn"
+    class="h-11 px-6 rounded-xl bg-gradient-to-r from-blue-500 to-fuchsia-500 font-semibold shadow-lg">
+    Envoyer
+  </button>
+</div>
+
+<!-- OCR MODAL -->
+<div id="rxModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center">
+  <div class="glass p-6 rounded-2xl w-[90%] max-w-lg border border-white/10">
+    <h3 class="font-semibold mb-2">📄 Analyse d’ordonnance</h3>
+
+    <img id="rxPreview" class="hidden w-full rounded-xl mb-3 border border-white/10">
+    <p id="rxHint" class="text-sm text-slate-400 mb-4"></p>
+
+    <div class="flex gap-2">
+      <button id="sendRx"
+        class="hidden flex-1 bg-green-500/30 border border-green-400/30 text-green-200 py-2 rounded-xl hover:bg-green-500/40">
+        Envoyer l’ordonnance
+      </button>
+      <button id="closeModal"
+        class="flex-1 bg-white/10 py-2 rounded-xl hover:bg-white/20">
+        Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API="http://127.0.0.1:8000"
+const CHAT=API+"/chat/"
+const OCR=API+"/ocr/"
+
+const messages=document.getElementById("messages")
+const textInput=document.getElementById("textInput")
+const sendBtn=document.getElementById("sendBtn")
+const addRxBtn=document.getElementById("addRxBtn")
+const exportBtn=document.getElementById("exportBtn")
+
+const rxModal=document.getElementById("rxModal")
+const rxPreview=document.getElementById("rxPreview")
+const rxHint=document.getElementById("rxHint")
+const sendRx=document.getElementById("sendRx")
+const closeModal=document.getElementById("closeModal")
+
+let selectedFile=null
+let lastMedicalHTML=""
+
+function addMessage(role,text){
+ const wrap=document.createElement("div")
+ wrap.className="flex "+(role=="user"?"justify-end":"justify-start")
+
+ const bubble=document.createElement("div")
+ bubble.className="max-w-[75%] px-4 py-3 rounded-2xl "+
+  (role=="user"?"bg-blue-500/30 rounded-tr-md":"bg-white/10 rounded-tl-md")
+
+ bubble.innerHTML=text
+ wrap.appendChild(bubble)
+ messages.appendChild(wrap)
+ messages.scrollTop=messages.scrollHeight
+}
+
+function parseMedicalJSON(text){
+  try{
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if(!jsonMatch) return text
+
+    const data = JSON.parse(jsonMatch[0])
+    let html=""
+
+    if(data.patient){
+      html+=`<div class="patient-card">👤 <b>${data.patient.name||""}</b> — ${data.patient.age||""}</div>`
+    }
+
+    if(data.medicaments){
+      data.medicaments.forEach(m=>{
+        html+=`
+        <div class="med-card">
+          <div class="med-title">💊 ${m.name}</div>
+          <div>Dose : ${m.dose}</div>
+          <div>${m.times.join(" • ")}</div>
+        </div>`
+      })
+    }
+
+    return html
+  }catch{
+    return text
+  }
+}
+
+function saveForPDF(html){
+  lastMedicalHTML=html
+  exportBtn.classList.remove("hidden")
+}
+
+exportBtn.onclick=()=>{
+  const w=window.open("")
+  w.document.write("<h2>Ordonnance</h2>"+lastMedicalHTML)
+  w.print()
+}
+
+sendBtn.onclick=()=>{
+ const t=textInput.value.trim()
+ if(!t)return
+ addMessage("user",t)
+ textInput.value=""
+
+ fetch(CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t})})
+ .then(r=>r.json())
+ .then(d=>{
+   addMessage("assistant", d.reply || d.response || d.text || d.output || "Réponse vide")
+ })
+}
+
+addRxBtn.onclick=()=>{
+ const picker=document.createElement("input")
+ picker.type="file"
+ picker.accept="image/*"
+ picker.onchange=()=>{
+  const f=picker.files[0]
+  if(!f)return
+  selectedFile=f
+  rxPreview.src=URL.createObjectURL(f)
+  rxPreview.classList.remove("hidden")
+  rxHint.innerText=f.name
+  rxModal.classList.remove("hidden")
+  sendRx.classList.remove("hidden")
+ }
+ picker.click()
+}
+
+sendRx.onclick=()=>{
+ const form=new FormData()
+ form.append("file",selectedFile)
+ form.append("user_id","demo")
+ addMessage("user","📄 Ordonnance envoyée")
+
+ fetch(OCR,{method:"POST",body:form})
+ .then(r=>r.json())
+ .then(d=>{
+   const raw = d.medical || d.analysis || d.raw_text || ""
+   const msg = parseMedicalJSON(raw)
+   addMessage("assistant", msg)
+   saveForPDF(msg)
+ })
+
+ rxModal.classList.add("hidden")
+ sendRx.classList.add("hidden")
+}
+
+closeModal.onclick=()=>{
+ rxModal.classList.add("hidden")
+ sendRx.classList.add("hidden")
+}
+</script>
+
+</body>
+</html>

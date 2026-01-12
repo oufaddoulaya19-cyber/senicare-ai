@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Senior AI — Register</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-black via-purple-900 to-blue-900 flex items-center justify-center text-white">
+
+<div class="w-full max-w-lg bg-white/5 backdrop-blur-lg p-8 rounded-2xl border border-white/10 shadow-xl">
+  <h1 class="text-2xl font-bold text-center mb-2">Créer un compte</h1>
+  <p class="text-center text-slate-300 mb-6">Senior AI Assistant</p>
+
+  <div class="grid grid-cols-2 gap-3">
+    <input id="nom" placeholder="Nom" class="input">
+    <input id="prenom" placeholder="Prénom" class="input">
+    <input id="age" placeholder="Âge" class="input">
+    <input id="email" placeholder="Email" class="input">
+    <input id="password" type="password" placeholder="Mot de passe" class="input">
+    <input id="emergency_phone" placeholder="Téléphone urgence" class="input">
+  </div>
+
+  <textarea id="maladies" placeholder="Maladies"
+    class="input mt-3"></textarea>
+
+  <textarea id="allergies" placeholder="Allergies"
+    class="input mt-3"></textarea>
+
+  <textarea id="adresse" placeholder="Adresse"
+    class="input mt-3"></textarea>
+
+  <button id="registerBtn"
+    class="w-full mt-5 p-3 rounded-xl bg-green-600 hover:bg-green-700 font-bold">
+    Créer le compte
+  </button>
+
+  <p id="status" class="text-center text-sm mt-3"></p>
+
+  <p class="text-center text-sm mt-5 text-slate-300">
+    Déjà un compte ?
+    <a href="login.html" class="text-blue-400 hover:underline">Connexion</a>
+  </p>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000/auth/register";
+
+document.getElementById("registerBtn").onclick = async () => {
+  status.textContent = "Création...";
+
+  const data = {
+    nom: nom.value,
+    prenom: prenom.value,
+    age: parseInt(age.value),
+    email: email.value,
+    password: password.value,
+    maladies: maladies.value,
+    allergies: allergies.value,
+    adresse: adresse.value,
+    emergency_phone: emergency_phone.value
+  };
+
+  try {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const r = await res.json();
+
+    if (!res.ok || r.error) {
+      status.textContent = r.error || "Erreur";
+      status.className = "text-red-400 text-center";
+      return;
+    }
+
+    status.textContent = "Compte créé. Redirection...";
+    status.className = "text-green-400 text-center";
+
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 1200);
+
+  } catch {
+    status.textContent = "Backend inaccessible";
+    status.className = "text-red-400 text-center";
+  }
+};
+</script>
+
+<style>
+.input{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  outline:none;
+  color:white;
+}
+</style>
+
+</body>
+</html>
